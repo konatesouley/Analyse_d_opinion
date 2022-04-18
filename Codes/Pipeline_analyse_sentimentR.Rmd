@@ -147,6 +147,71 @@ print(res_B)
 ```
 
 
+```{r}
+res_Bigram <- DPRIM %>%
+  mutate(text=gsub(x=post,pattern="[0-9]",replacement="")) %>%
+  mutate(text=gsub(x=post,pattern="ã",replacement="e")) %>%
+  mutate(text=gsub(x=post,pattern="â",replacement="e")) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+
+#affichage
+print(res_Bigram)
+
+
+```
+
+
+```{r}
+res_Bigram_counts <- res_Bigram %>%
+  count(bigram, bigram, sort = TRUE) %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+res_Bigram_counts
+```
+
+
+```{r}
+negate_words <- c("ne", "pas", "non","ni")
+```
+
+
+```{r}
+res <- res_Bigram_counts %>%
+  filter(word1 %in% negate_words) %>%
+  count(word1, word2, wt = n, sort = TRUE) %>%
+  inner_join(polarite_termes, by = c(word2 = "word")) %>%
+  filter(!is.na(polarity)) %>%
+  mutate(contribution = n) %>%
+  group_by(word1) %>%
+  slice_max(abs(contribution), n = 5) %>%
+  ungroup() %>%
+  mutate(word2 = reorder_within(word2, contribution, word1))
+res
+```
+
+
+```{r}
+res_Bigram_counts %>%
+  filter(word1 %in% negate_words) %>%
+  count(word1, word2, wt = n, sort = TRUE) %>%
+  inner_join(polarite_termes, by = c(word2 = "word")) %>%
+  filter(!is.na(polarity)) %>%
+  mutate(contribution = n) %>%
+  group_by(word1) %>%
+  slice_max(abs(contribution), n = 10) %>%
+  ungroup() %>%
+  mutate(word2 = reorder_within(word2, contribution, word1)) %>%
+  ggplot(aes(contribution, word2, fill = polarity)) +
+  geom_col(show.legend = TRUE) +
+  facet_wrap(~ word1, scales = "free", nrow = 3) +
+  scale_y_reordered() +
+  labs(x = "polarité par occurence de mots",
+       y = "mots precedés d'une negation")
+```
+
+
+
+
 #### Dictionnaire des termes
 
 ```{r}
